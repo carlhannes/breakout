@@ -10,7 +10,7 @@ const { chromium } = require('playwright');
   await page.goto(process.env.TARGET || 'http://192.168.1.1/');
 
   // get first applicable username field
-  const [username] = await Promise.all([
+  const username = await Promise.any([
     page.getByPlaceholder('Username', { timeout: 1000 }),
     page.getByText('Username', { timeout: 1000 }),
     page.getByLabel('Username', { timeout: 1000 }),
@@ -28,7 +28,7 @@ const { chromium } = require('playwright');
   }
 
   // get the first applicable password field
-  const [password] = await Promise.all([
+  const password = await Promise.any([
     page.getByPlaceholder('Password', { timeout: 1000 }),
     page.getByText('Password', { timeout: 1000 }),
     page.getByLabel('Password', { timeout: 1000 }),
@@ -49,7 +49,7 @@ const { chromium } = require('playwright');
   });
 
   // get the first applicable reboot button
-  const [reboot] = await Promise.all([
+  const reboot = await Promise.any([
     page.getByText('Reboot', { timeout: 1000 }),
     page.getByText('Reboot Router', { timeout: 1000 }),
     page.getByText('Reboot Device', { timeout: 1000 }),
