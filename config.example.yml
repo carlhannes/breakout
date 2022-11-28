@@ -1,3 +1,16 @@
+# set NODE_ENV to development to show the interactive browser, get logs etc
+NODE_ENV: development
+
+# target is your wanted target i.e. your internet gateway device
+# in the future we could set this to something like "auto-igd" and it would detect
+# the primary gateway from the network/upnp, and use that as a target
 target: http://192.168.1.1/
+
+# username and password needed to reboot the router
+# will only use username if required, as some routers only asks for password
 username: admin
 password: password
+
+# will console log that it found the reboot button, instead of actually clicking it
+# so you won't loose your internet :)
+dryrun: true
