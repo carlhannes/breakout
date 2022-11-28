@@ -1,8 +1,7 @@
-const { chromium } = require('playwright');
-const fetch = require('isomorphic-unfetch');
-const fs = require('fs').promises;
-const YAML = require('yaml');
-
+import { chromium } from 'playwright'
+import fetch from 'isomorphic-unfetch'
+import fs from 'fs/promises'
+import YAML from 'yaml'
 // check if we can reach captive.apple.com
 // if we can, DNS and internet is working
 const checkCaptivePortal = async () => {
@@ -55,7 +54,7 @@ const rebootDevice = async ({
   if (usernameFld) {
     await usernameFld.fill(USERNAME || 'admin');
   }
-
+ 
   // get the first applicable password field
   const passwordFld = await Promise.any([
     page.getByPlaceholder('Password', { timeout: 1000 }),
