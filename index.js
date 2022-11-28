@@ -1,16 +1,34 @@
 const { chromium } = require('playwright');
+const fetch = require('isomorphic-unfetch');
+const fs = require('fs').promises;
+const YAML = require('yaml');
 
-(async () => {
-  const browser = await chromium.launch({
-    headless: process.env.NODE_ENV !== 'development',
-  });
+// check if we can reach captive.apple.com
+// if we can, DNS and internet is working
+const checkCaptivePortal = async () => {
+  const res = await fetch('http://captive.apple.com');
+  return res.status === 200;
+};
+
+// get config.yml if it exists
+const getConfig = async () => {
+  try {
+    const file = await fs.readFile('config.yml', 'utf8');
+    return YAML.parse(file);
+  } catch (err) {
+    return null;
+  }
+};
+
+// main program
+const rebootDevice = async ({ browser, target, username, password }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  await page.goto(process.env.TARGET || 'http://192.168.1.1/');
+  await page.goto(target || 'http://192.168.1.1/');
 
   // get first applicable username field
-  const username = await Promise.any([
+  const usernameFld = await Promise.any([
     page.getByPlaceholder('Username', { timeout: 1000 }),
     page.getByText('Username', { timeout: 1000 }),
     page.getByLabel('Username', { timeout: 1000 }),
@@ -23,12 +41,12 @@ const { chromium } = require('playwright');
     console.log('No username field found');
   });
 
-  if (username) {
-    await username.fill(process.env.USERNAME || 'admin');
+  if (usernameFld) {
+    await usernameFld.fill(username || 'admin');
   }
 
   // get the first applicable password field
-  const password = await Promise.any([
+  const passwordFld = await Promise.any([
     page.getByPlaceholder('Password', { timeout: 1000 }),
     page.getByText('Password', { timeout: 1000 }),
     page.getByLabel('Password', { timeout: 1000 }),
@@ -39,8 +57,8 @@ const { chromium } = require('playwright');
   });
 
 
-  await password.fill(process.env.PASSWORD || 'password');
-  await password.press('Enter');
+  await passwordFld.fill(password || 'password');
+  await passwordFld.press('Enter');
 
   
   page.once('dialog', async dialog => {
@@ -49,7 +67,7 @@ const { chromium } = require('playwright');
   });
 
   // get the first applicable reboot button
-  const reboot = await Promise.any([
+  const rebootBtn = await Promise.any([
     page.getByText('Reboot', { timeout: 1000 }),
     page.getByText('Reboot Router', { timeout: 1000 }),
     page.getByText('Reboot Device', { timeout: 1000 }),
@@ -60,9 +78,31 @@ const { chromium } = require('playwright');
     throw new Error('No reboot button found');
   });
 
-  await reboot.click();
+  await rebootBtn.click();
 
   // ---------------------
   await context.close();
-  await browser.close();
+};
+
+// main program
+(async () => {
+  let config = await getConfig();
+  if (config && process.env) {
+    config = { ...process.env, ...config };
+  }
+
+  const internetIsReachable = await checkCaptivePortal();
+  if (!internetIsReachable || process.env.IGNORE_CHECK) {
+    console.log('Internet is not reachable, rebooting device(s)');
+
+    const browser = await chromium.launch({
+      headless: process.env.NODE_ENV !== 'development',
+    });
+
+    await rebootDevice({ browser, ...config });
+
+    await browser.close();
+  } else {
+    console.log('Internet is reachable!');
+  }
 })();
