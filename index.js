@@ -29,6 +29,7 @@ const rebootDevice = async ({ browser, target, username, password }) => {
 
   // get first applicable username field
   const usernameFld = await Promise.any([
+    page.getByPlaceholder('User', { timeout: 1000 }),
     page.getByPlaceholder('Username', { timeout: 1000 }),
     page.getByText('Username', { timeout: 1000 }),
     page.getByLabel('Username', { timeout: 1000 }),
@@ -40,11 +41,10 @@ const rebootDevice = async ({ browser, target, username, password }) => {
   ]).catch(() => {
     console.log('No username field found');
   });
-
   if (usernameFld) {
     await usernameFld.fill(username || 'admin');
   }
-
+ 
   // get the first applicable password field
   const passwordFld = await Promise.any([
     page.getByPlaceholder('Password', { timeout: 1000 }),
@@ -66,23 +66,38 @@ const rebootDevice = async ({ browser, target, username, password }) => {
     await dialog.accept();
   });
 
-  // get the first applicable reboot button
-  const rebootBtn = await Promise.any([
-    page.getByText('Reboot', { timeout: 1000 }),
-    page.getByText('Reboot Router', { timeout: 1000 }),
-    page.getByText('Reboot Device', { timeout: 1000 }),
-    page.getByText('Reboot Modem', { timeout: 1000 }),
-    page.getByText('Reboot Gateway', { timeout: 1000 }),
-    page.locator(':has-text("Reboot")', { timeout: 1000 })
-  ]).catch(() => {
-    throw new Error('No reboot button found');
-  });
+  // ugly solution for telia-routers 
+  const isTeliaRouter =  await page.$$('.brandlogin').then((res) => res.length > 0);
+  if (isTeliaRouter) {
+   
+    await page.waitForNavigation({ waitUntil: 'networkidle' });
+    
+    await page.locator('.row >> text="Router"').click()
+    await page.locator('.tabs >> text="Maintenance"').click()
+    await page.locator('.button >> text="Restart"').click()
+    await page.locator('#restart-modal >> text="Yes"').click()
+  } else {
 
-  await rebootBtn.click();
+    // get the first applicable reboot button
+    
+    const rebootBtn = await Promise.any([
+        page.getByText('Reboot', { timeout: 1000 }),
+        page.getByText('Reboot Router', { timeout: 1000 }),
+        page.getByText('Reboot Device', { timeout: 1000 }),
+        page.getByText('Reboot Modem', { timeout: 1000 }),
+        page.getByText('Reboot Gateway', { timeout: 1000 }),
+        page.locator(':has-text("Reboot")', { timeout: 1000 })
+      ]).catch(() => {
+          throw new Error('No reboot button found');
+        });
+        await rebootBtn.click();
+      }
+     
+        await context.close();
+ }
 
   // ---------------------
-  await context.close();
-};
+
 
 // main program
 (async () => {
@@ -92,7 +107,7 @@ const rebootDevice = async ({ browser, target, username, password }) => {
   }
 
   const internetIsReachable = await checkCaptivePortal();
-  if (!internetIsReachable || process.env.IGNORE_CHECK) {
+  if (internetIsReachable || process.env.IGNORE_CHECK) {
     console.log('Internet is not reachable, rebooting device(s)');
 
     const browser = await chromium.launch({
