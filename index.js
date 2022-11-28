@@ -107,7 +107,7 @@ const rebootDevice = async ({ browser, target, username, password }) => {
   }
 
   const internetIsReachable = await checkCaptivePortal();
-  if (internetIsReachable || process.env.IGNORE_CHECK) {
+  if (!internetIsReachable || process.env.IGNORE_CHECK) {
     console.log('Internet is not reachable, rebooting device(s)');
 
     const browser = await chromium.launch({
